@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ResearchTrace — real Grinsztajn bounded reproduction</title>
+<style>
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  color: #172033;
+  background: #f6f7f9;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+header {
+  padding: 18px 24px;
+  background: #ffffff;
+  border-bottom: 1px solid #dfe3e8;
+}
+header h1 { margin: 0 0 4px; font-size: 22px; }
+header p { margin: 0; color: #5b6577; font-size: 13px; }
+main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 16px;
+  padding: 16px;
+}
+.controls {
+  display: flex;
+  gap: 12px;
+  align-items: end;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.controls label { font-size: 12px; color: #5b6577; }
+.controls select {
+  display: block;
+  margin-top: 4px;
+  min-width: 240px;
+  padding: 8px;
+  border: 1px solid #cbd2da;
+  border-radius: 6px;
+  background: #ffffff;
+}
+.panel {
+  background: #ffffff;
+  border: 1px solid #dfe3e8;
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.graph-panel { padding: 12px; overflow: auto; min-height: 560px; }
+#graph { width: 100%; min-width: 800px; min-height: 520px; }
+.edge { stroke: #aab3bf; stroke-width: 1.3; }
+.edge.focus { stroke-width: 2; }
+.node rect {
+  fill: #ffffff;
+  stroke: #778397;
+  stroke-width: 1.3;
+  rx: 7;
+}
+.node.trace rect { stroke-width: 2.2; }
+.node.claim rect { fill: #eef2ff; }
+.node.finding rect { fill: #eefbf3; }
+.node.limitation rect { fill: #fff5ed; }
+.node.activity rect, .node.analysis rect { fill: #f4f6f8; }
+.node text { pointer-events: none; font-size: 11px; }
+.node .kind { font-size: 9px; fill: #667085; text-transform: uppercase; }
+.questions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.question { padding: 12px; min-height: 150px; }
+.question h2 { margin: 0 0 8px; font-size: 14px; }
+.question p { margin: 0 0 8px; color: #667085; font-size: 11px; }
+.item-list { display: flex; flex-direction: column; gap: 6px; }
+.item {
+  text-align: left;
+  padding: 7px 8px;
+  border: 1px solid #dfe3e8;
+  border-radius: 6px;
+  background: #fafbfc;
+  cursor: pointer;
+  font-size: 11px;
+}
+.item:hover { background: #f0f3f6; }
+aside { padding: 14px; min-height: 720px; overflow-wrap: anywhere; }
+aside h2 { margin: 0 0 8px; font-size: 16px; }
+aside h3 { margin: 16px 0 6px; font-size: 12px; color: #475467; }
+.badges { display: flex; flex-wrap: wrap; gap: 5px; }
+.badge {
+  display: inline-block;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: #edf0f3;
+  font-size: 10px;
+}
+dl { margin: 0; font-size: 11px; }
+dt { margin-top: 6px; color: #667085; }
+dd { margin: 1px 0 0; }
+pre {
+  margin: 6px 0 0;
+  padding: 8px;
+  border-radius: 6px;
+  background: #f5f6f7;
+  overflow: auto;
+  font-size: 10px;
+  white-space: pre-wrap;
+}
+.empty { color: #98a2b3; font-size: 11px; }
+.notice {
+  margin-top: 12px;
+  padding: 8px 10px;
+  border: 1px solid #dfe3e8;
+  border-radius: 6px;
+  color: #667085;
+  background: #fafbfc;
+  font-size: 10px;
+}
+@media (max-width: 1050px) {
+  main { grid-template-columns: 1fr; }
+  .questions { grid-template-columns: 1fr; }
+  aside { min-height: 0; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>ResearchTrace — real Grinsztajn bounded reproduction</h1>
+  <p>Forward research context and backward evidence from persistent scientific state.</p>
+</header>
+<main>
+  <section>
+    <div class="controls">
+      <label>Scientific focus
+        <select id="focus-select"></select>
+      </label>
+      <label>Graph scope
+        <select id="scope-select">
+          <option value="backward">Backward evidence / provenance</option>
+          <option value="forward">Forward research context</option>
+          <option value="all">Full projected state</option>
+        </select>
+      </label>
+    </div>
+    <div class="panel graph-panel">
+      <svg id="graph" role="img" aria-label="ResearchTrace graph"></svg>
+    </div>
+    <div class="questions">
+      <section class="panel question">
+        <h2 id="believe-title">Why should I believe this?</h2>
+        <p id="believe-description">Direct supporting evidence or findings.</p>
+        <div id="believe" class="item-list"></div>
+      </section>
+      <section class="panel question">
+        <h2>Can I reproduce the result?</h2>
+        <p>Plans, analyses, runs, data, artifacts and environments in the trace.</p>
+        <div id="reproduce" class="item-list"></div>
+      </section>
+      <section class="panel question">
+        <h2 id="weaken-title">What could weaken it?</h2>
+        <p id="weaken-description">Contradictions, inconclusive evidence and limitations.</p>
+        <div id="weaken" class="item-list"></div>
+      </section>
+    </div>
+  </section>
+  <aside class="panel">
+    <h2 id="inspect-title">Select a node</h2>
+    <div id="inspect-body" class="empty">
+      Click a graph node or an item in one of the claim panels.
+    </div>
+    <div class="notice">
+      Semantic labels describe projection status, not universal scientific ontology.
+      Source/profile metadata remains namespaced. A completed execution does not
+      necessarily reproduce a reported result or establish the cause of a discrepancy.
+    </div>
+  </aside>
+</main>
+<script id="researchtrace-data" type="application/json">{"claims": [], "findings": [{"evidence_ids": ["ACT-M7-DEFAULT-REPRODUCTION"], "finding_id": "FND-M7-DEFAULT-NONREPRODUCTION", "forward_context_node_ids": ["FND-M7-DEFAULT-NONREPRODUCTION"], "forward_context_relation_ids": [], "limitation_ids": ["LIM-M7-REPRODUCTION-CAUSE-UNRESOLVED"], "provenance_node_ids": ["ACT-M7-DEFAULT-REPRODUCTION", "ACT-M7-HISTORICAL-DEFAULT", "DATA-M7-OPENML-44120", "ENV-M7-DEFAULT-REPRODUCTION", "FND-M7-DEFAULT-NONREPRODUCTION", "LIM-M7-REPRODUCTION-CAUSE-UNRESOLVED", "SRC-M7-M5-EMPIRICAL"], "provenance_relation_ids": ["REL-M7-HISTORICAL-SOURCE", "REL-M7-HISTORICAL-USES-DATA", "REL-M7-NONREPRODUCTION-LIMITED-BY", "REL-M7-REPRODUCTION-ENV", "REL-M7-REPRODUCTION-PRODUCES", "REL-M7-REPRODUCTION-SOURCE", "REL-M7-REPRODUCTION-TARGET", "REL-M7-REPRODUCTION-USES-DATA"], "reproducibility_ids": ["ACT-M7-DEFAULT-REPRODUCTION", "ACT-M7-HISTORICAL-DEFAULT", "DATA-M7-OPENML-44120", "ENV-M7-DEFAULT-REPRODUCTION"]}], "nodes": [{"details": {"activity_type": "reproduction_attempt", "outcome": "completed"}, "external_references": [], "id": "ACT-M7-DEFAULT-REPRODUCTION", "kind": "activity", "label": "Activity", "semantic_statuses": ["experimental_generalized", "source_profile"], "source_metadata": {"estimator_seed_check_count": 10, "execution_status": "completed", "historical_run_reproduced_bitwise": false, "reproduction_assessment": "not_exactly_reproduced"}, "summary": "Deterministic reconstruction of the released RandomForest default run", "values": [{"capability_status": "accepted_capability", "method": "held-out evaluation under the reconstructed source split and explicit estimator seed", "parameter": "test_accuracy", "provenance_ids": ["SRC-M7-M5-EMPIRICAL", "DATA-M7-OPENML-44120", "ENV-M7-DEFAULT-REPRODUCTION"], "scale": "0-1", "uncertainty": [], "unit": null, "value": 0.8507425245835842, "value_type": null}, {"capability_status": "accepted_capability", "method": "deterministic rerun test accuracy minus released historical default test accuracy", "parameter": "test_accuracy_delta_rerun_minus_historical", "provenance_ids": ["SRC-M7-M5-EMPIRICAL", "ACT-M7-HISTORICAL-DEFAULT", "ENV-M7-DEFAULT-REPRODUCTION"], "scale": "absolute_accuracy_difference", "uncertainty": [], "unit": null, "value": 0.004966887417218624, "value_type": null}]}, {"details": {"activity_type": "historical_execution_record", "outcome": "reported_completed"}, "external_references": [], "id": "ACT-M7-HISTORICAL-DEFAULT", "kind": "activity", "label": "Activity", "semantic_statuses": ["experimental_generalized", "source_profile"], "source_metadata": {"configuration_label": "default", "exact_historical_environment_available": false, "source_data_row": 96547}, "summary": "Released RandomForest electricity default run", "values": [{"capability_status": "accepted_capability", "method": "released benchmark_total.csv default row", "parameter": "test_accuracy", "provenance_ids": ["SRC-M7-M5-EMPIRICAL", "DATA-M7-OPENML-44120"], "scale": "0-1", "uncertainty": [], "unit": null, "value": 0.8457756371663656, "value_type": null}]}, {"details": {}, "external_references": [{"locator": "https://www.openml.org/data/v1/download/22103245", "scheme": "OpenML.dataset", "value": "44120", "version": "download-22103245"}], "id": "DATA-M7-OPENML-44120", "kind": "dataset", "label": "Dataset", "semantic_statuses": ["experimental_generalized", "source_profile"], "source_metadata": {"sha256": "4d7b7c23364b86aeae37c8993a9529ac2d6a8b8ae0e5c653ed8c7d9c16a9d8b9", "task_id": 361060}, "summary": "electricity transformed numerical-classification dataset", "values": []}, {"details": {"description": "Python 3.8.20, NumPy 1.20.3, SciPy 1.6.2, scikit-learn 1.1.2"}, "external_references": [], "id": "ENV-M7-DEFAULT-REPRODUCTION", "kind": "execution_environment", "label": "Execution Environment", "semantic_statuses": ["experimental_generalized", "source_profile"], "source_metadata": {"estimator_random_state": 0, "numpy": "1.20.3", "python": "3.8.20", "scikit_learn": "1.1.2", "scipy": "1.6.2"}, "summary": "Frozen deterministic Grinsztajn CPU reconstruction environment", "values": []}, {"details": {"outcome": "negative_result"}, "external_references": [], "id": "FND-M7-DEFAULT-NONREPRODUCTION", "kind": "finding", "label": "Finding", "semantic_statuses": ["experimental_generalized", "source_profile"], "source_metadata": {"causal_explanation_supported": false, "evidence_scope": "one_historical_run_and_one_deterministic_reconstruction"}, "summary": "The bounded deterministic CPU reconstruction did not exactly reproduce the released historical RandomForest electricity default test accuracy.", "values": []}, {"details": {}, "external_references": [], "id": "LIM-M7-REPRODUCTION-CAUSE-UNRESOLVED", "kind": "limitation", "label": "Limitation", "semantic_statuses": ["experimental_generalized", "source_profile"], "source_metadata": {"unresolved_question": "cause_of_historical_rerun_mismatch"}, "summary": "The exact historical environment and process-global RNG state are unavailable, and the recorded ten-seed estimator check does not establish estimator randomness alone as the cause of the score difference.", "values": []}, {"details": {}, "external_references": [{"locator": null, "scheme": "repository_path", "value": "research/meta/m5/empirical-slice.yaml", "version": "48617fdc63359b79648e06e06ae0f8de8d7a31cb90a5975e8b16f55cc1f786f7"}], "id": "SRC-M7-M5-EMPIRICAL", "kind": "source", "label": "Source", "semantic_statuses": ["experimental_generalized", "source_profile"], "source_metadata": {"evidence_status": "completed_empirical_adjudication"}, "summary": "M5 Grinsztajn empirical adjudication", "values": []}], "relations": [{"external_references": [], "id": "REL-M7-HISTORICAL-SOURCE", "locations": [], "provenance_ids": ["SRC-M7-M5-EMPIRICAL"], "semantic_statuses": ["experimental_generalized"], "source_id": "ACT-M7-HISTORICAL-DEFAULT", "source_metadata": {}, "source_type": null, "source_vocabulary": null, "target_id": "SRC-M7-M5-EMPIRICAL", "type": "based_on"}, {"external_references": [], "id": "REL-M7-HISTORICAL-USES-DATA", "locations": [], "provenance_ids": ["SRC-M7-M5-EMPIRICAL"], "semantic_statuses": ["experimental_generalized"], "source_id": "ACT-M7-HISTORICAL-DEFAULT", "source_metadata": {}, "source_type": null, "source_vocabulary": null, "target_id": "DATA-M7-OPENML-44120", "type": "uses_dataset"}, {"external_references": [], "id": "REL-M7-NONREPRODUCTION-LIMITED-BY", "locations": [], "provenance_ids": ["SRC-M7-M5-EMPIRICAL"], "semantic_statuses": ["experimental_generalized"], "source_id": "FND-M7-DEFAULT-NONREPRODUCTION", "source_metadata": {}, "source_type": null, "source_vocabulary": null, "target_id": "LIM-M7-REPRODUCTION-CAUSE-UNRESOLVED", "type": "limited_by"}, {"external_references": [], "id": "REL-M7-REPRODUCTION-ENV", "locations": [], "provenance_ids": ["SRC-M7-M5-EMPIRICAL"], "semantic_statuses": ["experimental_generalized"], "source_id": "ACT-M7-DEFAULT-REPRODUCTION", "source_metadata": {}, "source_type": null, "source_vocabulary": null, "target_id": "ENV-M7-DEFAULT-REPRODUCTION", "type": "executed_in"}, {"external_references": [], "id": "REL-M7-REPRODUCTION-PRODUCES", "locations": [], "provenance_ids": ["SRC-M7-M5-EMPIRICAL"], "semantic_statuses": ["experimental_generalized"], "source_id": "ACT-M7-DEFAULT-REPRODUCTION", "source_metadata": {}, "source_type": null, "source_vocabulary": null, "target_id": "FND-M7-DEFAULT-NONREPRODUCTION", "type": "produces"}, {"external_references": [], "id": "REL-M7-REPRODUCTION-SOURCE", "locations": [], "provenance_ids": ["SRC-M7-M5-EMPIRICAL"], "semantic_statuses": ["experimental_generalized"], "source_id": "ACT-M7-DEFAULT-REPRODUCTION", "source_metadata": {}, "source_type": null, "source_vocabulary": null, "target_id": "SRC-M7-M5-EMPIRICAL", "type": "based_on"}, {"external_references": [], "id": "REL-M7-REPRODUCTION-TARGET", "locations": [], "provenance_ids": ["SRC-M7-M5-EMPIRICAL"], "semantic_statuses": ["experimental_generalized"], "source_id": "ACT-M7-DEFAULT-REPRODUCTION", "source_metadata": {}, "source_type": null, "source_vocabulary": null, "target_id": "ACT-M7-HISTORICAL-DEFAULT", "type": "attempts_to_reproduce"}, {"external_references": [], "id": "REL-M7-REPRODUCTION-USES-DATA", "locations": [], "provenance_ids": ["SRC-M7-M5-EMPIRICAL"], "semantic_statuses": ["experimental_generalized"], "source_id": "ACT-M7-DEFAULT-REPRODUCTION", "source_metadata": {}, "source_type": null, "source_vocabulary": null, "target_id": "DATA-M7-OPENML-44120", "type": "uses_dataset"}], "schema_version": "researchtrace-view-v0", "scientific_state_schema_version": "spc-model-v0"}</script>
+<script>
+const data = JSON.parse(document.getElementById('researchtrace-data').textContent);
+const nodes = new Map(data.nodes.map(node => [node.id, node]));
+const relations = new Map(data.relations.map(edge => [edge.id, edge]));
+const claims = new Map(data.claims.map(claim => [claim.claim_id, claim]));
+const findings = new Map((data.findings || []).map(finding => [finding.finding_id, finding]));
+const focusSelect = document.getElementById('focus-select');
+const scopeSelect = document.getElementById('scope-select');
+const svg = document.getElementById('graph');
+const ns = 'http://www.w3.org/2000/svg';
+
+function text(value) {
+  if (value === null || value === undefined) return '';
+  return String(value);
+}
+
+function truncate(value, size = 25) {
+  const string = text(value);
+  return string.length <= size ? string : string.slice(0, size - 1) + '…';
+}
+
+function element(tag, attrs = {}) {
+  const item = document.createElementNS(ns, tag);
+  for (const [key, value] of Object.entries(attrs)) item.setAttribute(key, value);
+  return item;
+}
+
+function selectedFocus() {
+  if (claims.has(focusSelect.value)) {
+    return { kind: 'claim', id: focusSelect.value, trace: claims.get(focusSelect.value) };
+  }
+  if (findings.has(focusSelect.value)) {
+    return { kind: 'finding', id: focusSelect.value, trace: findings.get(focusSelect.value) };
+  }
+  return null;
+}
+
+function visibleNodeIds() {
+  const focus = selectedFocus();
+  if (!focus || scopeSelect.value === 'all') return new Set(nodes.keys());
+  if (scopeSelect.value === 'forward') {
+    return new Set([...focus.trace.forward_context_node_ids, focus.id]);
+  }
+  return new Set([...focus.trace.provenance_node_ids, focus.id]);
+}
+
+function visibleRelationIds() {
+  const focus = selectedFocus();
+  if (!focus || scopeSelect.value === 'all') return null;
+  if (scopeSelect.value === 'forward') {
+    return new Set(focus.trace.forward_context_relation_ids);
+  }
+  return new Set(focus.trace.provenance_relation_ids);
+}
+
+function appendItems(containerId, ids) {
+  const container = document.getElementById(containerId);
+  container.replaceChildren();
+  if (!ids.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.textContent = 'No represented state.';
+    container.appendChild(empty);
+    return;
+  }
+  for (const id of ids) {
+    const node = nodes.get(id);
+    if (!node) continue;
+    const button = document.createElement('button');
+    button.className = 'item';
+    button.type = 'button';
+    button.textContent = node.label + ': ' + truncate(node.summary, 70);
+    button.addEventListener('click', () => inspectNode(id));
+    container.appendChild(button);
+  }
+}
+
+function renderQuestions() {
+  const focus = selectedFocus();
+  const findingSelected = focus && focus.kind === 'finding';
+  document.getElementById('believe-title').textContent = findingSelected
+    ? 'What evidence produced this finding?' : 'Why should I believe this?';
+  document.getElementById('believe-description').textContent = findingSelected
+    ? 'Represented inputs and producing activities; not an independent truth verdict.'
+    : 'Direct supporting evidence or findings.';
+  document.getElementById('weaken-title').textContent = findingSelected
+    ? 'What limits this finding?' : 'What could weaken it?';
+  document.getElementById('weaken-description').textContent = findingSelected
+    ? 'Explicitly represented limitations; no causal explanation is inferred.'
+    : 'Contradictions, inconclusive evidence and limitations.';
+  if (!focus) {
+    appendItems('believe', []);
+    appendItems('reproduce', []);
+    appendItems('weaken', []);
+    return;
+  }
+  const record = focus.trace;
+  appendItems('believe', findingSelected ? record.evidence_ids : record.why_believe_ids);
+  appendItems('reproduce', record.reproducibility_ids);
+  appendItems('weaken', findingSelected ? record.limitation_ids : record.what_could_weaken_ids);
+}
+
+function detailRow(list, name, value) {
+  if (value === null || value === undefined || value === '') return;
+  const term = document.createElement('dt');
+  term.textContent = name;
+  const description = document.createElement('dd');
+  description.textContent = text(value);
+  list.append(term, description);
+}
+
+function heading(body, value) {
+  const item = document.createElement('h3');
+  item.textContent = value;
+  body.appendChild(item);
+}
+
+function inspectNode(id) {
+  const node = nodes.get(id);
+  if (!node) return;
+  document.getElementById('inspect-title').textContent = node.label + ' · ' + node.id;
+  const body = document.getElementById('inspect-body');
+  body.className = '';
+  body.replaceChildren();
+
+  const summary = document.createElement('p');
+  summary.textContent = node.summary;
+  body.appendChild(summary);
+
+  heading(body, 'Semantic status');
+  const badges = document.createElement('div');
+  badges.className = 'badges';
+  for (const status of node.semantic_statuses) {
+    const badge = document.createElement('span');
+    badge.className = 'badge';
+    badge.textContent = status;
+    badges.appendChild(badge);
+  }
+  body.appendChild(badges);
+
+  if (Object.keys(node.details).length) {
+    heading(body, 'Details');
+    const list = document.createElement('dl');
+    for (const [key, value] of Object.entries(node.details)) detailRow(list, key, value);
+    body.appendChild(list);
+  }
+
+  if (node.values.length) {
+    heading(body, 'Structured result values');
+    for (const value of node.values) {
+      const pre = document.createElement('pre');
+      pre.textContent = JSON.stringify(value, null, 2);
+      body.appendChild(pre);
+    }
+  }
+
+  if (node.external_references.length) {
+    heading(body, 'Exact references / locators');
+    for (const reference of node.external_references) {
+      const pre = document.createElement('pre');
+      pre.textContent = JSON.stringify(reference, null, 2);
+      body.appendChild(pre);
+    }
+  }
+
+  if (Object.keys(node.source_metadata).length) {
+    heading(body, 'Namespaced source metadata');
+    const pre = document.createElement('pre');
+    pre.textContent = JSON.stringify(node.source_metadata, null, 2);
+    body.appendChild(pre);
+  }
+}
+
+function renderGraph() {
+  svg.replaceChildren();
+  const visible = visibleNodeIds();
+  const visibleRelations = visibleRelationIds();
+  const visibleNodes = data.nodes.filter(node => visible.has(node.id));
+  const visibleEdges = data.relations.filter(edge => {
+    const endpointsVisible = visible.has(edge.source_id) && visible.has(edge.target_id);
+    return endpointsVisible && (!visibleRelations || visibleRelations.has(edge.id));
+  });
+  const kindOrder = [
+    'source', 'research_question', 'hypothesis', 'plan', 'activity', 'dataset',
+    'artifact', 'analysis', 'finding', 'claim', 'limitation', 'agent',
+    'execution_environment'
+  ];
+  const columns = new Map();
+  for (const node of visibleNodes) {
+    if (!columns.has(node.kind)) columns.set(node.kind, []);
+    columns.get(node.kind).push(node);
+  }
+  for (const group of columns.values()) group.sort((a, b) => a.id.localeCompare(b.id));
+  const kinds = [...columns.keys()].sort((a, b) => {
+    const ai = kindOrder.indexOf(a);
+    const bi = kindOrder.indexOf(b);
+    return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi) || a.localeCompare(b);
+  });
+  const positions = new Map();
+  const columnWidth = 170;
+  const rowHeight = 88;
+  const nodeWidth = 145;
+  const nodeHeight = 54;
+  kinds.forEach((kind, column) => {
+    columns.get(kind).forEach((node, row) => {
+      positions.set(node.id, {
+        x: 18 + column * columnWidth,
+        y: 24 + row * rowHeight
+      });
+    });
+  });
+  const maxRows = Math.max(1, ...[...columns.values()].map(group => group.length));
+  svg.setAttribute('viewBox', `0 0 ${Math.max(800, kinds.length * columnWidth + 40)} ` +
+    `${Math.max(500, maxRows * rowHeight + 70)}`);
+
+  for (const edge of visibleEdges) {
+    const source = positions.get(edge.source_id);
+    const target = positions.get(edge.target_id);
+    if (!source || !target) continue;
+    const line = element('line', {
+      x1: source.x + nodeWidth / 2,
+      y1: source.y + nodeHeight / 2,
+      x2: target.x + nodeWidth / 2,
+      y2: target.y + nodeHeight / 2,
+      class: 'edge focus'
+    });
+    const title = element('title');
+    title.textContent = edge.type + (edge.source_type ? ` · ${edge.source_type}` : '');
+    line.appendChild(title);
+    svg.appendChild(line);
+  }
+
+  for (const node of visibleNodes) {
+    const position = positions.get(node.id);
+    const group = element('g', {
+      class: `node ${node.kind} trace`,
+      tabindex: '0',
+      role: 'button'
+    });
+    group.style.cursor = 'pointer';
+    group.appendChild(element('rect', {
+      x: position.x,
+      y: position.y,
+      width: nodeWidth,
+      height: nodeHeight
+    }));
+    const kind = element('text', {
+      x: position.x + 8,
+      y: position.y + 14,
+      class: 'kind'
+    });
+    kind.textContent = node.label;
+    group.appendChild(kind);
+    const summary = element('text', {
+      x: position.x + 8,
+      y: position.y + 34
+    });
+    summary.textContent = truncate(node.summary, 22);
+    group.appendChild(summary);
+    const title = element('title');
+    title.textContent = node.id + ' · ' + node.summary;
+    group.appendChild(title);
+    group.addEventListener('click', () => inspectNode(node.id));
+    group.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') inspectNode(node.id);
+    });
+    svg.appendChild(group);
+  }
+}
+
+function render() {
+  renderQuestions();
+  renderGraph();
+  const focus = selectedFocus();
+  if (focus) inspectNode(focus.id);
+}
+
+for (const [kind, records, idField] of [
+  ['Claim', data.claims, 'claim_id'],
+  ['Finding', data.findings || [], 'finding_id']
+]) {
+  for (const record of records) {
+    const option = document.createElement('option');
+    option.value = record[idField];
+    const node = nodes.get(record[idField]);
+    option.textContent = kind + ' · ' +
+      (node ? truncate(node.summary, 70) : record[idField]);
+    focusSelect.appendChild(option);
+  }
+}
+if (!focusSelect.options.length) {
+  const option = document.createElement('option');
+  option.textContent = 'No Claims or Findings represented';
+  option.value = '';
+  focusSelect.appendChild(option);
+}
+focusSelect.addEventListener('change', render);
+scopeSelect.addEventListener('change', renderGraph);
+render();
+</script>
+</body>
+</html>
