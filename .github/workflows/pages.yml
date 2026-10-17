@@ -1,0 +1,81 @@
+name: Publish reviewed ResearchTrace demo to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "examples/**"
+      - "release-manifest.json"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: researchtrace-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Validate and publish approved static files
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify frozen public release and stage allowlisted assets
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          from shutil import copy2
+
+          root = Path(".")
+          manifest = json.loads((root / "release-manifest.json").read_text(encoding="utf-8"))
+          approved = {"index.html", "examples/synthetic.html"}
+          assert manifest["schema_version"] == "researchtrace-static-release-v1"
+          assert set(manifest["files"]) == approved
+          assert manifest["upstream"]["visibility"] == "private"
+          assert manifest["upstream"]["commit"] == "603d88764cbc6940e5264a77a41acc92a93b7ba6"
+
+          site = root / "_site"
+          site.mkdir(exist_ok=True)
+          for name in sorted(approved):
+              source = root / name
+              raw = source.read_bytes()
+              entry = manifest["files"][name]
+              assert len(raw) == entry["bytes"], name
+              assert hashlib.sha256(raw).hexdigest() == entry["sha256"], name
+              html = raw.decode("utf-8")
+              assert html.startswith("<!doctype html>"), name
+              assert html.strip().endswith("</html>"), name
+              assert "<script src=" not in html, name
+              assert "<link rel=" not in html, name
+              destination = site / name
+              destination.parent.mkdir(parents=True, exist_ok=True)
+              copy2(source, destination)
+              print(f"Approved {name}: {len(raw)} bytes, SHA-256 {entry['sha256']}")
+
+          copy2(root / "release-manifest.json", site / "release-manifest.json")
+          (site / ".nojekyll").write_text("", encoding="utf-8")
+          PY
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload allowlisted static Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
