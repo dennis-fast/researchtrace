@@ -4,6 +4,11 @@ ResearchTrace is a read-only, standalone visualization of **computable scientifi
 
 **[Open the real-case demonstration](https://dennis-fast.github.io/researchtrace/)** · [Explore labeled synthetic examples](https://dennis-fast.github.io/researchtrace/examples/synthetic.html)
 
+The **first screen** explains the selected scientific result before showing
+the graph. It displays the source-linked historical and reconstructed values,
+recorded discrepancy and limitations, followed by selectable evidence details.
+The full typed graph is available on demand below.
+
 ## Real case: bounded computational reproduction
 
 The default demo displays a frozen, previously qualified research case derived from the [Grinsztajn et al. tabular benchmark](https://github.com/LeoGrin/tabular-benchmark), using a RandomForest/electricity result:

@@ -44,7 +44,7 @@ jobs:
           assert manifest["schema_version"] == "researchtrace-static-release-v1"
           assert set(manifest["files"]) == approved
           assert manifest["upstream"]["visibility"] == "private"
-          assert manifest["upstream"]["commit"] == "603d88764cbc6940e5264a77a41acc92a93b7ba6"
+          assert manifest["upstream"]["commit"] == "9ebb55120244d8aaa4241e0917a11ad8bcd35ae4"
 
           site = root / "_site"
           site.mkdir(exist_ok=True)

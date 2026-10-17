@@ -1,10 +1,10 @@
 {
   "schema_version": "researchtrace-static-release-v1",
-  "release_id": "NFDI4DS-2026-preview-2026-10-17",
+  "release_id": "NFDI4DS-2026-preview-story-first-2026-10-17",
   "upstream": {
     "repository": "dennis-fast/scientific-process-core",
     "visibility": "private",
-    "commit": "603d88764cbc6940e5264a77a41acc92a93b7ba6",
+    "commit": "9ebb55120244d8aaa4241e0917a11ad8bcd35ae4",
     "generator": "tools/build_researchtrace_demo.py",
     "cases": {
       "index.html": "grinsztajn",
@@ -13,14 +13,15 @@
   },
   "files": {
     "index.html": {
-      "sha256": "6bf83bcfc9fd8467179364d4d7256da5416edb358d34251a3d6fc5290724e898",
-      "bytes": 24396
+      "sha256": "3ee134f63c77417ef4255ba96ec06ac48c210b44468a6dc36a5de9ccc70f43f6",
+      "bytes": 35713
     },
     "examples/synthetic.html": {
-      "sha256": "28dd10b752eb353c98379d25c29ae93d46887e200154fff53529530f369ef5e4",
-      "bytes": 34105
+      "sha256": "1b02aabdd52c3335c976a2b0d2e87dbc3b71a27f7cb72532b6585806575003f7",
+      "bytes": 45432
     }
   },
   "interpretation": "Static read-only projections; the frozen Grinsztajn case is qualified evidence, not a claim of successful exact reproduction or a fresh reproduction experiment.",
-  "manual_browser_rehearsal": "not yet performed"
+  "manual_browser_rehearsal": "CI headless Chromium DOM checks passed; actual conference-device and iOS visual rehearsal still outstanding",
+  "interface_version": "story-first-v1"
 }

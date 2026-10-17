@@ -1,11 +1,35 @@
 # ResearchTrace static preview — release and scientific boundaries
 
-**Release:** NFDI4DS-2026-preview-2026-10-17  
+**Release:** NFDI4DS-2026-preview-story-first-2026-10-17  
 **Distribution:** Public, read-only GitHub Pages HTML. No application backend.  
-**Source:** `dennis-fast/scientific-process-core@603d88764cbc6940e5264a77a41acc92a93b7ba6` (**private repository**).  
+**Source:** `dennis-fast/scientific-process-core@9ebb55120244d8aaa4241e0917a11ad8bcd35ae4` (**private repository**).  
 **Generator:** `tools/build_researchtrace_demo.py` (cases `grinsztajn` and `synthetic`).  
 **Frozen scientific inputs:** `research/meta/m5/empirical-slice.yaml`, `research/meta/m7/fifth-slice.yaml`, including its qualified decision.  
-**Verification:** The upstream integration suite passed on Python 3.11–3.13, with 302 tests on Python 3.13 at the recorded checkpoint. For this distribution, SHA-256 digests and exact byte lengths of the two HTML exports are recorded in [release-manifest.json](release-manifest.json).
+**Verification:** The upstream integration suite passed on Python 3.11–3.13, with 306 tests on Python 3.13 at the recorded checkpoint. For this distribution, SHA-256 digests and exact byte lengths of the two HTML exports are recorded in [release-manifest.json](release-manifest.json).
+
+
+## Story-first presentation
+
+The first screen now shows the **full bounded negative Finding**, the source-linked
+historical and reconstructed accuracy values, the recorded numerical difference,
+the explicit reproduction assessment, and an unresolved-cause qualification.
+The values are rounded to six decimals **only in the overview**; exact numerical
+precision and provenance remain in the record inspector and embedded JSON.
+
+The three evidence panels provide directly inspectable producing activities,
+reproduction context and limitations. The typed graph is optional: open
+**Explore the typed evidence graph** to inspect the source-native directional
+relations, relation labels and backward/forward/full-state scopes. Column
+placement is categorical, not a claimed temporal or causal progression.
+
+This UI is a **presentation-layer change**, not new empirical evidence or
+a different scientific-state/admission decision. The same generic renderer
+also builds the clearly labeled synthetic Claim-based examples.
+
+Automated CI tests (including headless Chromium DOM rendering of the real
+comparison and a generic Finding with no metrics) passed on the source
+revision. Browser readability and usefulness on actual presentation devices
+still require manual review. No automatic user-evaluation conclusions are drawn.
 
 ## What the Grinsztajn case actually shows
 
