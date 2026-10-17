@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ResearchTrace — synthetic M6 demonstration</title>
+<style>
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  color: #172033;
+  background: #f6f7f9;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+header {
+  padding: 18px 24px;
+  background: #ffffff;
+  border-bottom: 1px solid #dfe3e8;
+}
+header h1 { margin: 0 0 4px; font-size: 22px; }
+header p { margin: 0; color: #5b6577; font-size: 13px; }
+main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 16px;
+  padding: 16px;
+}
+.controls {
+  display: flex;
+  gap: 12px;
+  align-items: end;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.controls label { font-size: 12px; color: #5b6577; }
+.controls select {
+  display: block;
+  margin-top: 4px;
+  min-width: 240px;
+  padding: 8px;
+  border: 1px solid #cbd2da;
+  border-radius: 6px;
+  background: #ffffff;
+}
+.panel {
+  background: #ffffff;
+  border: 1px solid #dfe3e8;
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.graph-panel { padding: 12px; overflow: auto; min-height: 560px; }
+#graph { width: 100%; min-width: 800px; min-height: 520px; }
+.edge { stroke: #aab3bf; stroke-width: 1.3; }
+.edge.focus { stroke-width: 2; }
+.node rect {
+  fill: #ffffff;
+  stroke: #778397;
+  stroke-width: 1.3;
+  rx: 7;
+}
+.node.trace rect { stroke-width: 2.2; }
+.node.claim rect { fill: #eef2ff; }
+.node.finding rect { fill: #eefbf3; }
+.node.limitation rect { fill: #fff5ed; }
+.node.activity rect, .node.analysis rect { fill: #f4f6f8; }
+.node text { pointer-events: none; font-size: 11px; }
+.node .kind { font-size: 9px; fill: #667085; text-transform: uppercase; }
+.questions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.question { padding: 12px; min-height: 150px; }
+.question h2 { margin: 0 0 8px; font-size: 14px; }
+.question p { margin: 0 0 8px; color: #667085; font-size: 11px; }
+.item-list { display: flex; flex-direction: column; gap: 6px; }
+.item {
+  text-align: left;
+  padding: 7px 8px;
+  border: 1px solid #dfe3e8;
+  border-radius: 6px;
+  background: #fafbfc;
+  cursor: pointer;
+  font-size: 11px;
+}
+.item:hover { background: #f0f3f6; }
+aside { padding: 14px; min-height: 720px; overflow-wrap: anywhere; }
+aside h2 { margin: 0 0 8px; font-size: 16px; }
+aside h3 { margin: 16px 0 6px; font-size: 12px; color: #475467; }
+.badges { display: flex; flex-wrap: wrap; gap: 5px; }
+.badge {
+  display: inline-block;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: #edf0f3;
+  font-size: 10px;
+}
+dl { margin: 0; font-size: 11px; }
+dt { margin-top: 6px; color: #667085; }
+dd { margin: 1px 0 0; }
+pre {
+  margin: 6px 0 0;
+  padding: 8px;
+  border-radius: 6px;
+  background: #f5f6f7;
+  overflow: auto;
+  font-size: 10px;
+  white-space: pre-wrap;
+}
+.empty { color: #98a2b3; font-size: 11px; }
+.notice {
+  margin-top: 12px;
+  padding: 8px 10px;
+  border: 1px solid #dfe3e8;
+  border-radius: 6px;
+  color: #667085;
+  background: #fafbfc;
+  font-size: 10px;
+}
+@media (max-width: 1050px) {
+  main { grid-template-columns: 1fr; }
+  .questions { grid-template-columns: 1fr; }
+  aside { min-height: 0; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>ResearchTrace — synthetic M6 demonstration</h1>
+  <p>Forward research context and backward evidence from persistent scientific state.</p>
+</header>
+<main>
+  <section>
+    <div class="controls">
+      <label>Scientific focus
+        <select id="focus-select"></select>
+      </label>
+      <label>Graph scope
+        <select id="scope-select">
+          <option value="backward">Backward evidence / provenance</option>
+          <option value="forward">Forward research context</option>
+          <option value="all">Full projected state</option>
+        </select>
+      </label>
+    </div>
+    <div class="panel graph-panel">
+      <svg id="graph" role="img" aria-label="ResearchTrace graph"></svg>
+    </div>
+    <div class="questions">
+      <section class="panel question">
+        <h2 id="believe-title">Why should I believe this?</h2>
+        <p id="believe-description">Direct supporting evidence or findings.</p>
+        <div id="believe" class="item-list"></div>
+      </section>
+      <section class="panel question">
+        <h2>Can I reproduce the result?</h2>
+        <p>Plans, analyses, runs, data, artifacts and environments in the trace.</p>
+        <div id="reproduce" class="item-list"></div>
+      </section>
+      <section class="panel question">
+        <h2 id="weaken-title">What could weaken it?</h2>
+        <p id="weaken-description">Contradictions, inconclusive evidence and limitations.</p>
+        <div id="weaken" class="item-list"></div>
+      </section>
+    </div>
+  </section>
+  <aside class="panel">
+    <h2 id="inspect-title">Select a node</h2>
+    <div id="inspect-body" class="empty">
+      Click a graph node or an item in one of the claim panels.
+    </div>
+    <div class="notice">
+      Semantic labels describe projection status, not universal scientific ontology.
+      Source/profile metadata remains namespaced. A completed execution does not
+      necessarily reproduce a reported result or establish the cause of a discrepancy.
+    </div>
+  </aside>
+</main>
+<script id="researchtrace-data" type="application/json">{"claims": [{"claim_id": "CB-CLM", "contradicting_ids": [], "forward_context_node_ids": ["CB-AN", "CB-ART", "CB-CLM", "CB-FND", "CB-H", "CB-PLAN", "CB-RQ", "CB-RUN"], "forward_context_relation_ids": ["CB-R10", "CB-R2", "CB-R3", "CB-R4", "CB-R7", "CB-R8", "CB-R9"], "inconclusive_ids": [], "limitation_ids": ["CB-LIM"], "provenance_node_ids": ["CB-AN", "CB-ART", "CB-CLM", "CB-DATA", "CB-ENV", "CB-FND", "CB-LIM", "CB-PLAN", "CB-RUN"], "provenance_relation_ids": ["CB-R10", "CB-R11", "CB-R4", "CB-R5", "CB-R6", "CB-R7", "CB-R8", "CB-R9"], "reproducibility_ids": ["CB-AN", "CB-ART", "CB-DATA", "CB-ENV", "CB-PLAN", "CB-RUN"], "what_could_weaken_ids": ["CB-LIM"], "why_believe_ids": ["CB-FND"]}, {"claim_id": "PAPER-CLM", "contradicting_ids": [], "forward_context_node_ids": ["PAPER-CLM"], "forward_context_relation_ids": [], "inconclusive_ids": [], "limitation_ids": [], "provenance_node_ids": ["PAPER-CLM", "PAPER-SRC"], "provenance_relation_ids": ["PAPER-R1"], "reproducibility_ids": [], "what_could_weaken_ids": [], "why_believe_ids": ["PAPER-SRC"]}, {"claim_id": "RESULT-CLM", "contradicting_ids": [], "forward_context_node_ids": ["RESULT-CLM"], "forward_context_relation_ids": [], "inconclusive_ids": [], "limitation_ids": [], "provenance_node_ids": ["RESULT-CLM", "RESULT-FND", "RESULT-SRC"], "provenance_relation_ids": ["RESULT-R1", "RESULT-R2"], "reproducibility_ids": [], "what_could_weaken_ids": [], "why_believe_ids": ["RESULT-FND"]}, {"claim_id": "VERIFY-CLM", "contradicting_ids": ["VERIFY-ACT"], "forward_context_node_ids": ["VERIFY-CLM"], "forward_context_relation_ids": [], "inconclusive_ids": [], "limitation_ids": [], "provenance_node_ids": ["VERIFY-ACT", "VERIFY-ART", "VERIFY-CLM", "VERIFY-FND", "VERIFY-SRC"], "provenance_relation_ids": ["VERIFY-R1", "VERIFY-R2", "VERIFY-R3", "VERIFY-R4", "VERIFY-R5"], "reproducibility_ids": ["VERIFY-ACT", "VERIFY-ART"], "what_could_weaken_ids": ["VERIFY-ACT"], "why_believe_ids": ["VERIFY-FND"]}], "findings": [{"evidence_ids": ["CB-AN"], "finding_id": "CB-FND", "forward_context_node_ids": ["CB-AN", "CB-ART", "CB-FND", "CB-H", "CB-PLAN", "CB-RQ", "CB-RUN"], "forward_context_relation_ids": ["CB-R2", "CB-R3", "CB-R4", "CB-R7", "CB-R8", "CB-R9"], "limitation_ids": [], "provenance_node_ids": ["CB-AN", "CB-ART", "CB-DATA", "CB-ENV", "CB-FND", "CB-PLAN", "CB-RUN"], "provenance_relation_ids": ["CB-R4", "CB-R5", "CB-R6", "CB-R7", "CB-R8", "CB-R9"], "reproducibility_ids": ["CB-AN", "CB-ART", "CB-DATA", "CB-ENV", "CB-PLAN", "CB-RUN"]}, {"evidence_ids": ["RESULT-SRC"], "finding_id": "RESULT-FND", "forward_context_node_ids": ["RESULT-FND"], "forward_context_relation_ids": [], "limitation_ids": [], "provenance_node_ids": ["RESULT-FND", "RESULT-SRC"], "provenance_relation_ids": ["RESULT-R2"], "reproducibility_ids": []}, {"evidence_ids": ["VERIFY-SRC"], "finding_id": "VERIFY-FND", "forward_context_node_ids": ["VERIFY-FND"], "forward_context_relation_ids": [], "limitation_ids": [], "provenance_node_ids": ["VERIFY-FND", "VERIFY-SRC"], "provenance_relation_ids": ["VERIFY-R2"], "reproducibility_ids": []}], "nodes": [{"details": {"method": "paired bootstrap"}, "external_references": [], "id": "CB-AN", "kind": "analysis", "label": "Analysis", "semantic_statuses": ["experimental_generalized", "frozen_compatibility"], "source_metadata": {"circuitbranch": {"fixture": "synthetic_m6"}}, "summary": "Bootstrap AUROC comparison", "values": []}, {"details": {"artifact_type": "result", "description": "Frozen evaluation metrics"}, "external_references": [{"locator": "demo/results.json", "scheme": "git_path", "value": "scientific-process-core@main:demo/results.json", "version": "7fb6b36f6452936912d68c541d3473cf6a0af24c"}], "id": "CB-ART", "kind": "artifact", "label": "Artifact", "semantic_statuses": ["experimental_generalized", "frozen_compatibility"], "source_metadata": {"circuitbranch": {"fixture": "synthetic_m6"}}, "summary": "Frozen evaluation metrics", "values": []}, {"details": {}, "external_references": [], "id": "CB-CLM", "kind": "claim", "label": "Claim", "semantic_statuses": ["experimental_generalized", "frozen_compatibility"], "source_metadata": {"circuitbranch": {"fixture": "synthetic_m6"}}, "summary": "Method A outperforms the frozen baseline in this evaluation.", "values": []}, {"details": {"description": "Synthetic 1,000-row evaluation fixture."}, "external_references": [], "id": "CB-DATA", "kind": "dataset", "label": "Dataset", "semantic_statuses": ["experimental_generalized", "frozen_compatibility"], "source_metadata": {"circuitbranch": {"fixture": "synthetic_m6", "independent_sample": false, "row_count": 1000}}, "summary": "Frozen evaluation split", "values": []}, {"details": {"description": "Python 3.12; deterministic CPU fixture."}, "external_references": [], "id": "CB-ENV", "kind": "execution_environment", "label": "Execution Environment", "semantic_statuses": ["experimental_generalized", "frozen_compatibility"], "source_metadata": {"circuitbranch": {"container_image": "researchtrace/demo:2026-09", "fixture": "synthetic_m6", "image_digest": "sha256:synthetic-demo-digest"}}, "summary": "Pinned container environment", "values": []}, {"details": {}, "external_references": [], "id": "CB-FND", "kind": "finding", "label": "Finding", "semantic_statuses": ["experimental_generalized", "frozen_compatibility"], "source_metadata": {"circuitbranch": {"fixture": "synthetic_m6"}}, "summary": "Method A improved AUROC by 0.04 on the frozen split.", "values": [{"capability_status": "accepted_capability", "method": "paired bootstrap", "parameter": "AUROC difference", "provenance_ids": ["CB-AN"], "scale": "0-1", "uncertainty": [{"level": 0.95, "lower": 0.02, "type": "confidence_interval", "unit": null, "upper": 0.06, "value": null}], "unit": null, "value": 0.04, "value_type": "estimate"}]}, {"details": {}, "external_references": [], "id": "CB-H", "kind": "hypothesis", "label": "Hypothesis", "semantic_statuses": ["experimental_generalized", "frozen_compatibility"], "source_metadata": {"circuitbranch": {"fixture": "synthetic_m6"}}, "summary": "Method A improves AUROC over the frozen baseline.", "values": []}, {"details": {}, "external_references": [], "id": "CB-LIM", "kind": "limitation", "label": "Limitation", "semantic_statuses": ["experimental_generalized", "frozen_compatibility"], "source_metadata": {"circuitbranch": {"fixture": "synthetic_m6"}}, "summary": "The primary result uses one frozen evaluation split.", "values": []}, {"details": {"purpose": "Test CB-H under fixed data and seeds."}, "external_references": [], "id": "CB-PLAN", "kind": "plan", "label": "Plan", "semantic_statuses": ["experimental_generalized", "frozen_compatibility"], "source_metadata": {"circuitbranch": {"fixture": "synthetic_m6"}}, "summary": "Frozen benchmark comparison", "values": []}, {"details": {}, "external_references": [], "id": "CB-RQ", "kind": "research_question", "label": "Research Question", "semantic_statuses": ["experimental_generalized", "frozen_compatibility"], "source_metadata": {"circuitbranch": {"fixture": "synthetic_m6"}}, "summary": "Does method A outperform the frozen baseline?", "values": []}, {"details": {"activity_type": "experiment_run", "outcome": "complete"}, "external_references": [], "id": "CB-RUN", "kind": "activity", "label": "Activity", "semantic_statuses": ["experimental_generalized", "frozen_compatibility"], "source_metadata": {"circuitbranch": {"code_commit": "2d965ebf9c9b8b99e25e62bb7c7242e82c75a311", "execution_commit": "7fb6b36f6452936912d68c541d3473cf6a0af24c", "fixture": "synthetic_m6", "parameters": {"epochs": 5, "learning_rate": 0.0001}, "seeds": [11, 23, 47], "source_branch": "main"}}, "summary": "experiment_run", "values": []}, {"details": {}, "external_references": [], "id": "CB-SRC", "kind": "source", "label": "Source", "semantic_statuses": ["experimental_generalized", "frozen_compatibility"], "source_metadata": {"circuitbranch": {"fixture": "synthetic_m6"}}, "summary": "Synthetic benchmark specification", "values": []}, {"details": {}, "external_references": [], "id": "PAPER-CLM", "kind": "claim", "label": "Claim", "semantic_statuses": ["experimental_generalized", "source_profile"], "source_metadata": {"paper_like": {"claim_id": "synthetic-claim-01"}}, "summary": "The reported intervention reduced the measured outcome.", "values": []}, {"details": {}, "external_references": [], "id": "PAPER-SRC", "kind": "source", "label": "Source", "semantic_statuses": ["experimental_generalized", "source_profile"], "source_metadata": {"paper_like": {"document_id": "synthetic-paper-001"}}, "summary": "Synthetic paper fragment", "values": []}, {"details": {}, "external_references": [], "id": "RESULT-CLM", "kind": "claim", "label": "Claim", "semantic_statuses": ["experimental_generalized", "source_profile"], "source_metadata": {"trial_like": {"record_id": "SYNTH-TRIAL-01"}}, "summary": "The intervention was associated with a lower outcome score.", "values": []}, {"details": {}, "external_references": [], "id": "RESULT-FND", "kind": "finding", "label": "Finding", "semantic_statuses": ["experimental_generalized", "source_profile"], "source_metadata": {"trial_like": {"record_id": "SYNTH-TRIAL-01"}}, "summary": "The estimated mean difference was -4.8 points.", "values": [{"capability_status": "accepted_capability", "method": "adjusted linear model", "parameter": "mean difference", "provenance_ids": ["RESULT-SRC"], "scale": null, "uncertainty": [{"level": 0.95, "lower": -7.1, "type": "confidence_interval", "unit": "points", "upper": -2.5, "value": null}], "unit": "points", "value": -4.8, "value_type": "estimate"}]}, {"details": {}, "external_references": [], "id": "RESULT-SRC", "kind": "source", "label": "Source", "semantic_statuses": ["experimental_generalized", "source_profile"], "source_metadata": {"trial_like": {"record_id": "SYNTH-TRIAL-01"}}, "summary": "Synthetic structured study record", "values": []}, {"details": {"activity_type": "reproduction_attempt", "criterion": "Replicate a positive effect under the reported protocol.", "outcome": "failed_to_reproduce"}, "external_references": [], "id": "VERIFY-ACT", "kind": "activity", "label": "Activity", "semantic_statuses": ["experimental_generalized", "source_profile"], "source_metadata": {"verification": {"fixture": "synthetic_m6", "independent_run": true}}, "summary": "Independent reproduction", "values": []}, {"details": {"artifact_type": "verification_result", "description": "Independent reproduction metrics"}, "external_references": [], "id": "VERIFY-ART", "kind": "artifact", "label": "Artifact", "semantic_statuses": ["experimental_generalized", "source_profile"], "source_metadata": {"verification": {"fixture": "synthetic_m6", "independent_run": true}}, "summary": "Independent reproduction metrics", "values": []}, {"details": {}, "external_references": [], "id": "VERIFY-CLM", "kind": "claim", "label": "Claim", "semantic_statuses": ["experimental_generalized", "source_profile"], "source_metadata": {"verification": {"fixture": "synthetic_m6", "independent_run": true}}, "summary": "The reported positive effect is reproducible.", "values": []}, {"details": {}, "external_references": [], "id": "VERIFY-FND", "kind": "finding", "label": "Finding", "semantic_statuses": ["experimental_generalized", "source_profile"], "source_metadata": {"verification": {"fixture": "synthetic_m6", "independent_run": true}}, "summary": "The original report described a positive effect.", "values": []}, {"details": {}, "external_references": [], "id": "VERIFY-SRC", "kind": "source", "label": "Source", "semantic_statuses": ["experimental_generalized", "source_profile"], "source_metadata": {"verification": {"fixture": "synthetic_m6", "independent_run": true}}, "summary": "Synthetic reported result", "values": []}], "relations": [{"external_references": [], "id": "CB-R1", "locations": [], "provenance_ids": [], "semantic_statuses": ["experimental_generalized", "frozen_compatibility"], "source_id": "CB-RQ", "source_metadata": {}, "source_type": "ResearchQuestion.based_on", "source_vocabulary": "CircuitBranch", "target_id": "CB-SRC", "type": "based_on"}, {"external_references": [], "id": "CB-R10", "locations": [], "provenance_ids": [], "semantic_statuses": ["experimental_generalized", "frozen_compatibility"], "source_id": "CB-FND", "source_metadata": {}, "source_type": "Claim.supported_by", "source_vocabulary": "CircuitBranch", "target_id": "CB-CLM", "type": "supports"}, {"external_references": [], "id": "CB-R11", "locations": [], "provenance_ids": [], "semantic_statuses": ["experimental_generalized", "frozen_compatibility"], "source_id": "CB-LIM", "source_metadata": {}, "source_type": "Claim.limitations", "source_vocabulary": "CircuitBranch", "target_id": "CB-CLM", "type": "limits"}, {"external_references": [], "id": "CB-R2", "locations": [], "provenance_ids": [], "semantic_statuses": ["experimental_generalized", "frozen_compatibility"], "source_id": "CB-H", "source_metadata": {}, "source_type": "Hypothesis.research_questions", "source_vocabulary": "CircuitBranch", "target_id": "CB-RQ", "type": "addresses_research_question"}, {"external_references": [], "id": "CB-R3", "locations": [], "provenance_ids": [], "semantic_statuses": ["experimental_generalized", "frozen_compatibility"], "source_id": "CB-PLAN", "source_metadata": {}, "source_type": "Experiment.tests", "source_vocabulary": "CircuitBranch", "target_id": "CB-H", "type": "tests"}, {"external_references": [], "id": "CB-R4", "locations": [], "provenance_ids": [], "semantic_statuses": ["experimental_generalized", "frozen_compatibility"], "source_id": "CB-RUN", "source_metadata": {}, "source_type": "ExperimentRun.experiment", "source_vocabulary": "CircuitBranch", "target_id": "CB-PLAN", "type": "executes_plan"}, {"external_references": [], "id": "CB-R5", "locations": [], "provenance_ids": [], "semantic_statuses": ["experimental_generalized", "frozen_compatibility"], "source_id": "CB-RUN", "source_metadata": {}, "source_type": "ExperimentRun.datasets", "source_vocabulary": "CircuitBranch", "target_id": "CB-DATA", "type": "uses_dataset"}, {"external_references": [], "id": "CB-R6", "locations": [], "provenance_ids": [], "semantic_statuses": ["experimental_generalized", "frozen_compatibility"], "source_id": "CB-RUN", "source_metadata": {}, "source_type": "ExperimentRun.environment", "source_vocabulary": "CircuitBranch", "target_id": "CB-ENV", "type": "executed_in"}, {"external_references": [], "id": "CB-R7", "locations": [], "provenance_ids": [], "semantic_statuses": ["experimental_generalized", "frozen_compatibility"], "source_id": "CB-ART", "source_metadata": {}, "source_type": "Artifact.produced_by", "source_vocabulary": "CircuitBranch", "target_id": "CB-RUN", "type": "produced_by"}, {"external_references": [], "id": "CB-R8", "locations": [], "provenance_ids": [], "semantic_statuses": ["experimental_generalized", "frozen_compatibility"], "source_id": "CB-AN", "source_metadata": {}, "source_type": "Analysis.inputs", "source_vocabulary": "CircuitBranch", "target_id": "CB-ART", "type": "uses"}, {"external_references": [], "id": "CB-R9", "locations": [], "provenance_ids": [], "semantic_statuses": ["experimental_generalized", "frozen_compatibility"], "source_id": "CB-FND", "source_metadata": {}, "source_type": "Finding.analyses", "source_vocabulary": "CircuitBranch", "target_id": "CB-AN", "type": "derived_from_analysis"}, {"external_references": [], "id": "PAPER-R1", "locations": [{"resource_id": "PAPER-SRC", "selector": "3", "selector_type": "sentence_index"}], "provenance_ids": [], "semantic_statuses": ["experimental_generalized", "source_profile"], "source_id": "PAPER-SRC", "source_metadata": {}, "source_type": "evidence_direction", "source_vocabulary": "SciFact-like synthetic fixture", "target_id": "PAPER-CLM", "type": "supports"}, {"external_references": [], "id": "RESULT-R1", "locations": [], "provenance_ids": [], "semantic_statuses": ["experimental_generalized", "source_profile"], "source_id": "RESULT-FND", "source_metadata": {}, "source_type": "reported_result", "source_vocabulary": "ClinicalTrials-like synthetic fixture", "target_id": "RESULT-CLM", "type": "supports"}, {"external_references": [], "id": "RESULT-R2", "locations": [], "provenance_ids": [], "semantic_statuses": ["experimental_generalized", "source_profile"], "source_id": "RESULT-FND", "source_metadata": {}, "source_type": "result_record", "source_vocabulary": "ClinicalTrials-like synthetic fixture", "target_id": "RESULT-SRC", "type": "derived_from"}, {"external_references": [], "id": "VERIFY-R1", "locations": [], "provenance_ids": [], "semantic_statuses": ["experimental_generalized", "source_profile"], "source_id": "VERIFY-FND", "source_metadata": {}, "source_type": "reported_claim_support", "source_vocabulary": "Synthetic verification profile", "target_id": "VERIFY-CLM", "type": "supports"}, {"external_references": [], "id": "VERIFY-R2", "locations": [], "provenance_ids": [], "semantic_statuses": ["experimental_generalized", "source_profile"], "source_id": "VERIFY-FND", "source_metadata": {}, "source_type": "reported_source", "source_vocabulary": "Synthetic verification profile", "target_id": "VERIFY-SRC", "type": "derived_from"}, {"external_references": [], "id": "VERIFY-R3", "locations": [], "provenance_ids": [], "semantic_statuses": ["experimental_generalized", "source_profile"], "source_id": "VERIFY-ACT", "source_metadata": {}, "source_type": "verification_outcome", "source_vocabulary": "Synthetic verification profile", "target_id": "VERIFY-CLM", "type": "challenges"}, {"external_references": [], "id": "VERIFY-R4", "locations": [], "provenance_ids": [], "semantic_statuses": ["experimental_generalized", "source_profile"], "source_id": "VERIFY-ACT", "source_metadata": {}, "source_type": "verification_evidence", "source_vocabulary": "Synthetic verification profile", "target_id": "VERIFY-ART", "type": "uses"}, {"external_references": [], "id": "VERIFY-R5", "locations": [], "provenance_ids": [], "semantic_statuses": ["experimental_generalized", "source_profile"], "source_id": "VERIFY-ART", "source_metadata": {}, "source_type": "report_source", "source_vocabulary": "Synthetic verification profile", "target_id": "VERIFY-SRC", "type": "derived_from"}], "schema_version": "researchtrace-view-v0", "scientific_state_schema_version": "spc-model-v0"}</script>
+<script>
+const data = JSON.parse(document.getElementById('researchtrace-data').textContent);
+const nodes = new Map(data.nodes.map(node => [node.id, node]));
+const relations = new Map(data.relations.map(edge => [edge.id, edge]));
+const claims = new Map(data.claims.map(claim => [claim.claim_id, claim]));
+const findings = new Map((data.findings || []).map(finding => [finding.finding_id, finding]));
+const focusSelect = document.getElementById('focus-select');
+const scopeSelect = document.getElementById('scope-select');
+const svg = document.getElementById('graph');
+const ns = 'http://www.w3.org/2000/svg';
+
+function text(value) {
+  if (value === null || value === undefined) return '';
+  return String(value);
+}
+
+function truncate(value, size = 25) {
+  const string = text(value);
+  return string.length <= size ? string : string.slice(0, size - 1) + '…';
+}
+
+function element(tag, attrs = {}) {
+  const item = document.createElementNS(ns, tag);
+  for (const [key, value] of Object.entries(attrs)) item.setAttribute(key, value);
+  return item;
+}
+
+function selectedFocus() {
+  if (claims.has(focusSelect.value)) {
+    return { kind: 'claim', id: focusSelect.value, trace: claims.get(focusSelect.value) };
+  }
+  if (findings.has(focusSelect.value)) {
+    return { kind: 'finding', id: focusSelect.value, trace: findings.get(focusSelect.value) };
+  }
+  return null;
+}
+
+function visibleNodeIds() {
+  const focus = selectedFocus();
+  if (!focus || scopeSelect.value === 'all') return new Set(nodes.keys());
+  if (scopeSelect.value === 'forward') {
+    return new Set([...focus.trace.forward_context_node_ids, focus.id]);
+  }
+  return new Set([...focus.trace.provenance_node_ids, focus.id]);
+}
+
+function visibleRelationIds() {
+  const focus = selectedFocus();
+  if (!focus || scopeSelect.value === 'all') return null;
+  if (scopeSelect.value === 'forward') {
+    return new Set(focus.trace.forward_context_relation_ids);
+  }
+  return new Set(focus.trace.provenance_relation_ids);
+}
+
+function appendItems(containerId, ids) {
+  const container = document.getElementById(containerId);
+  container.replaceChildren();
+  if (!ids.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.textContent = 'No represented state.';
+    container.appendChild(empty);
+    return;
+  }
+  for (const id of ids) {
+    const node = nodes.get(id);
+    if (!node) continue;
+    const button = document.createElement('button');
+    button.className = 'item';
+    button.type = 'button';
+    button.textContent = node.label + ': ' + truncate(node.summary, 70);
+    button.addEventListener('click', () => inspectNode(id));
+    container.appendChild(button);
+  }
+}
+
+function renderQuestions() {
+  const focus = selectedFocus();
+  const findingSelected = focus && focus.kind === 'finding';
+  document.getElementById('believe-title').textContent = findingSelected
+    ? 'What evidence produced this finding?' : 'Why should I believe this?';
+  document.getElementById('believe-description').textContent = findingSelected
+    ? 'Represented inputs and producing activities; not an independent truth verdict.'
+    : 'Direct supporting evidence or findings.';
+  document.getElementById('weaken-title').textContent = findingSelected
+    ? 'What limits this finding?' : 'What could weaken it?';
+  document.getElementById('weaken-description').textContent = findingSelected
+    ? 'Explicitly represented limitations; no causal explanation is inferred.'
+    : 'Contradictions, inconclusive evidence and limitations.';
+  if (!focus) {
+    appendItems('believe', []);
+    appendItems('reproduce', []);
+    appendItems('weaken', []);
+    return;
+  }
+  const record = focus.trace;
+  appendItems('believe', findingSelected ? record.evidence_ids : record.why_believe_ids);
+  appendItems('reproduce', record.reproducibility_ids);
+  appendItems('weaken', findingSelected ? record.limitation_ids : record.what_could_weaken_ids);
+}
+
+function detailRow(list, name, value) {
+  if (value === null || value === undefined || value === '') return;
+  const term = document.createElement('dt');
+  term.textContent = name;
+  const description = document.createElement('dd');
+  description.textContent = text(value);
+  list.append(term, description);
+}
+
+function heading(body, value) {
+  const item = document.createElement('h3');
+  item.textContent = value;
+  body.appendChild(item);
+}
+
+function inspectNode(id) {
+  const node = nodes.get(id);
+  if (!node) return;
+  document.getElementById('inspect-title').textContent = node.label + ' · ' + node.id;
+  const body = document.getElementById('inspect-body');
+  body.className = '';
+  body.replaceChildren();
+
+  const summary = document.createElement('p');
+  summary.textContent = node.summary;
+  body.appendChild(summary);
+
+  heading(body, 'Semantic status');
+  const badges = document.createElement('div');
+  badges.className = 'badges';
+  for (const status of node.semantic_statuses) {
+    const badge = document.createElement('span');
+    badge.className = 'badge';
+    badge.textContent = status;
+    badges.appendChild(badge);
+  }
+  body.appendChild(badges);
+
+  if (Object.keys(node.details).length) {
+    heading(body, 'Details');
+    const list = document.createElement('dl');
+    for (const [key, value] of Object.entries(node.details)) detailRow(list, key, value);
+    body.appendChild(list);
+  }
+
+  if (node.values.length) {
+    heading(body, 'Structured result values');
+    for (const value of node.values) {
+      const pre = document.createElement('pre');
+      pre.textContent = JSON.stringify(value, null, 2);
+      body.appendChild(pre);
+    }
+  }
+
+  if (node.external_references.length) {
+    heading(body, 'Exact references / locators');
+    for (const reference of node.external_references) {
+      const pre = document.createElement('pre');
+      pre.textContent = JSON.stringify(reference, null, 2);
+      body.appendChild(pre);
+    }
+  }
+
+  if (Object.keys(node.source_metadata).length) {
+    heading(body, 'Namespaced source metadata');
+    const pre = document.createElement('pre');
+    pre.textContent = JSON.stringify(node.source_metadata, null, 2);
+    body.appendChild(pre);
+  }
+}
+
+function renderGraph() {
+  svg.replaceChildren();
+  const visible = visibleNodeIds();
+  const visibleRelations = visibleRelationIds();
+  const visibleNodes = data.nodes.filter(node => visible.has(node.id));
+  const visibleEdges = data.relations.filter(edge => {
+    const endpointsVisible = visible.has(edge.source_id) && visible.has(edge.target_id);
+    return endpointsVisible && (!visibleRelations || visibleRelations.has(edge.id));
+  });
+  const kindOrder = [
+    'source', 'research_question', 'hypothesis', 'plan', 'activity', 'dataset',
+    'artifact', 'analysis', 'finding', 'claim', 'limitation', 'agent',
+    'execution_environment'
+  ];
+  const columns = new Map();
+  for (const node of visibleNodes) {
+    if (!columns.has(node.kind)) columns.set(node.kind, []);
+    columns.get(node.kind).push(node);
+  }
+  for (const group of columns.values()) group.sort((a, b) => a.id.localeCompare(b.id));
+  const kinds = [...columns.keys()].sort((a, b) => {
+    const ai = kindOrder.indexOf(a);
+    const bi = kindOrder.indexOf(b);
+    return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi) || a.localeCompare(b);
+  });
+  const positions = new Map();
+  const columnWidth = 170;
+  const rowHeight = 88;
+  const nodeWidth = 145;
+  const nodeHeight = 54;
+  kinds.forEach((kind, column) => {
+    columns.get(kind).forEach((node, row) => {
+      positions.set(node.id, {
+        x: 18 + column * columnWidth,
+        y: 24 + row * rowHeight
+      });
+    });
+  });
+  const maxRows = Math.max(1, ...[...columns.values()].map(group => group.length));
+  svg.setAttribute('viewBox', `0 0 ${Math.max(800, kinds.length * columnWidth + 40)} ` +
+    `${Math.max(500, maxRows * rowHeight + 70)}`);
+
+  for (const edge of visibleEdges) {
+    const source = positions.get(edge.source_id);
+    const target = positions.get(edge.target_id);
+    if (!source || !target) continue;
+    const line = element('line', {
+      x1: source.x + nodeWidth / 2,
+      y1: source.y + nodeHeight / 2,
+      x2: target.x + nodeWidth / 2,
+      y2: target.y + nodeHeight / 2,
+      class: 'edge focus'
+    });
+    const title = element('title');
+    title.textContent = edge.type + (edge.source_type ? ` · ${edge.source_type}` : '');
+    line.appendChild(title);
+    svg.appendChild(line);
+  }
+
+  for (const node of visibleNodes) {
+    const position = positions.get(node.id);
+    const group = element('g', {
+      class: `node ${node.kind} trace`,
+      tabindex: '0',
+      role: 'button'
+    });
+    group.style.cursor = 'pointer';
+    group.appendChild(element('rect', {
+      x: position.x,
+      y: position.y,
+      width: nodeWidth,
+      height: nodeHeight
+    }));
+    const kind = element('text', {
+      x: position.x + 8,
+      y: position.y + 14,
+      class: 'kind'
+    });
+    kind.textContent = node.label;
+    group.appendChild(kind);
+    const summary = element('text', {
+      x: position.x + 8,
+      y: position.y + 34
+    });
+    summary.textContent = truncate(node.summary, 22);
+    group.appendChild(summary);
+    const title = element('title');
+    title.textContent = node.id + ' · ' + node.summary;
+    group.appendChild(title);
+    group.addEventListener('click', () => inspectNode(node.id));
+    group.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') inspectNode(node.id);
+    });
+    svg.appendChild(group);
+  }
+}
+
+function render() {
+  renderQuestions();
+  renderGraph();
+  const focus = selectedFocus();
+  if (focus) inspectNode(focus.id);
+}
+
+for (const [kind, records, idField] of [
+  ['Claim', data.claims, 'claim_id'],
+  ['Finding', data.findings || [], 'finding_id']
+]) {
+  for (const record of records) {
+    const option = document.createElement('option');
+    option.value = record[idField];
+    const node = nodes.get(record[idField]);
+    option.textContent = kind + ' · ' +
+      (node ? truncate(node.summary, 70) : record[idField]);
+    focusSelect.appendChild(option);
+  }
+}
+if (!focusSelect.options.length) {
+  const option = document.createElement('option');
+  option.textContent = 'No Claims or Findings represented';
+  option.value = '';
+  focusSelect.appendChild(option);
+}
+focusSelect.addEventListener('change', render);
+scopeSelect.addEventListener('change', renderGraph);
+render();
+</script>
+</body>
+</html>
